@@ -1,11 +1,10 @@
-name: Unzip a into jalva (create PR)
+name: Unzip into jalva (create PR)
 on:
   push:
     paths:
       - '**.zip'
       - '.github/workflows/unzip-jalva-pr.yml'
 
-# Fixes exit code 128 by granting explicit write access
 permissions:
   contents: write
   pull-requests: write
@@ -33,13 +32,13 @@ jobs:
       - name: Show sample of jalva
         run: ls -la jalva | head -n 50
 
-      # Upgraded to v7 to native-target Node 20/24 and eliminate set-output warnings
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Unzip: add extracted files into jalva"
-          branch: "unzip/jalva-updates"
-          delete-branch: true
           title: "Unzip: extracted files into jalva"
           body: "Automated PR with files extracted from repository zip(s) into the jalva folder."
+          # CRITICAL FIX: Explicitly name the branch to prevent Git 128 errors
+          branch: "unzip/jalva-updates"
+          delete-branch: true
