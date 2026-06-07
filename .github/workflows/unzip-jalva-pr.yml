@@ -5,8 +5,10 @@ on:
       - '**.zip'
       - '.github/workflows/unzip-jalva-pr.yml'
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+# This grants the GITHUB_TOKEN permission to push code and open PRs
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   unzip-to-pr:
@@ -17,10 +19,7 @@ jobs:
 
       - name: Extract zips into jalva
         run: |
-          # Ensure the jalva directory exists (just in case)
           mkdir -p jalva
-          
-          # Check if any zip files exist in the root
           if compgen -G "*.zip" > /dev/null; then
             for z in *.zip; do
               echo "Extracting $z into jalva..."
