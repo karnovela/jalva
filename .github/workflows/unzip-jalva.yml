@@ -7,58 +7,51 @@ on:
       - '3.zip'
       - '.github/workflows/unzip-jalva.yml'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   unzip:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Ensure unzip is available
-        run: sudo apt-get update && sudo apt-get install -y unzip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip git
 
       - name: Create jalva if missing
         run: mkdir -p jalva
 
-      - name: Unzip 1.zip into jalva (if exists)
-        if: ${{ always() }}
+      - name: Unzip files into jalva
         run: |
-          if [ -f "1.zip" ]; then
-            unzip -o 1.zip -d jalva
-          else
-            echo "1.zip not present"
-          fi
-
-      - name: Unzip 2.zip into jalva (if exists)
-        if: ${{ always() }}
-        run: |
-          if [ -f "2.zip" ]; then
-            unzip -o 2.zip -d jalva
-          else
-            echo "2.zip not present"
-          fi
-
-      - name: Unzip 3.zip into jalva (if exists)
-        if: ${{ always() }}
-        run: |
-          if [ -f "3.zip" ]; then
-            unzip -o 3.zip -d jalva
-          else
-            echo "3.zip not present"
-          fi
+          for z in 1.zip 2.zip 3.zip; do
+            if [ -f "$z" ]; then
+              echo "Extracting $z"
+              unzip -o "$z" -d jalva || echo "unzip failed for $z"
+            else
+              echo "$z not found, skipping"
+            fi
+          done
 
       - name: Show jalva contents
         run: ls -la jalva | sed -n '1,200p'
 
       - name: Commit and push extracted files
+        env:
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add jalva || true
-          if git diff --staged --quiet; then
+          git config user.name "$GIT_COMMITTER_NAME"
+          git config user.email "$GIT_COMMITTER_EMAIL"
+          git add -A jalva
+          if git diff --cached --quiet; then
             echo "No changes to commit"
-          else
-            git commit -m "Unzipped 1.zip 2.zip 3.zip into jalva" || true
-            git push
+            exit 0
           fi
+          git commit -m "Unzipped 1.zip 2.zip 3.zip into jalva"
+          # Use repository token push (checkout provides correct remote)
+          git push origin HEAD
