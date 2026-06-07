@@ -1,70 +1,64 @@
-name: Unzip into aa jalva (create PR)
+name: Unzip into jalva
 on:
   push:
     paths:
-      - '**.zip'
-      - '.github/workflows/unzip-jalva-pr.yml'
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+      - '1.zip'
+      - '2.zip'
+      - '3.zip'
+      - '.github/workflows/unzip-jalva.yml'
 
 jobs:
-  unzip-to-pr:
+  unzip:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Prepare
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip git jq
-          mkdir -p jalva
+      - name: Ensure unzip is available
+        run: sudo apt-get update && sudo apt-get install -y unzip
 
-      - name: Find zip files
-        id: zips
-        run: |
-          files=$(ls -1 *.zip 2>/dev/null || true)
-          echo "::set-output name=list::${files}"
-      - name: Extract zips into jalva
-        if: steps.zips.outputs.list != ''
-        run: |
-          for z in ${{ steps.zips.outputs.list }}; do
-            echo "Extracting $z"
-            unzip -o "$z" -d jalva || echo "unzip failed for $z"
-          done
+      - name: Create jalva if missing
+        run: mkdir -p jalva
 
-      - name: Show jalva sample
+      - name: Unzip 1.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "1.zip" ]; then
+            unzip -o 1.zip -d jalva
+          else
+            echo "1.zip not present"
+          fi
+
+      - name: Unzip 2.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "2.zip" ]; then
+            unzip -o 2.zip -d jalva
+          else
+            echo "2.zip not present"
+          fi
+
+      - name: Unzip 3.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "3.zip" ]; then
+            unzip -o 3.zip -d jalva
+          else
+            echo "3.zip not present"
+          fi
+
+      - name: Show jalva contents
         run: ls -la jalva | sed -n '1,200p'
 
-      - name: Create branch if changes
-        id: commit
+      - name: Commit and push extracted files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A jalva
-          if git diff --cached --quiet; then
-            echo "no_changes=true" > out.txt
+          git add jalva || true
+          if git diff --staged --quiet; then
             echo "No changes to commit"
-            exit 0
+          else
+            git commit -m "Unzipped 1.zip 2.zip 3.zip into jalva" || true
+            git push
           fi
-          BRANCH="unzip/jalva-$(date +%s)"
-          git commit -m "Unzip zip files into jalva"
-          git checkout -b "$BRANCH"
-          git push --set-upstream origin "$BRANCH"
-          echo "branch=$BRANCH" > out.txt
-      - name: Set outputs
-        if: always()
-        run: |
-          if [ -f out.txt ]; then cat out.txt; fi
-      - name: Create Pull Request
-        if: steps.commit.outcome == 'success' && (steps.commit.outputs == '' || always())
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Unzip: add extracted files in jalva"
-          branch: ${{ fromJson(needs.unzip-to-pr.outputs || '{}').branch || '' }}
-          title: "Unzip: extracted files into jalva"
-          body: "Automated PR with files extracted from zip(s) into jalva"
