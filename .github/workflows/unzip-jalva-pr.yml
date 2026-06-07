@@ -1,11 +1,11 @@
-name: Unzip into a jalva (create PR)
+name: Unzip into jalva (create PR)
 on:
   push:
     paths:
       - '**.zip'
       - '.github/workflows/unzip-jalva-pr.yml'
 
-# This grants the GITHUB_TOKEN permission to push code and open PRs
+# Fixes exit code 128 by granting explicit write access
 permissions:
   contents: write
   pull-requests: write
@@ -33,8 +33,9 @@ jobs:
       - name: Show sample of jalva
         run: ls -la jalva | head -n 50
 
+      # Upgraded to v7 to native-target Node 20/24 and eliminate set-output warnings
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Unzip: add extracted files into jalva"
