@@ -1,0 +1,64 @@
+name: Unzip into jalva
+on:
+  push:
+    paths:
+      - '1.zip'
+      - '2.zip'
+      - '3.zip'
+      - '.github/workflows/unzip-jalva.yml'
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure unzip is available
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Create jalva if missing
+        run: mkdir -p jalva
+
+      - name: Unzip 1.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "1.zip" ]; then
+            unzip -o 1.zip -d jalva
+          else
+            echo "1.zip not present"
+          fi
+
+      - name: Unzip 2.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "2.zip" ]; then
+            unzip -o 2.zip -d jalva
+          else
+            echo "2.zip not present"
+          fi
+
+      - name: Unzip 3.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "3.zip" ]; then
+            unzip -o 3.zip -d jalva
+          else
+            echo "3.zip not present"
+          fi
+
+      - name: Show jalva contents
+        run: ls -la jalva | sed -n '1,200p'
+
+      - name: Commit and push extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add jalva || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Unzipped 1.zip 2.zip 3.zip into jalva" || true
+            git push
+          fi
