@@ -1,4 +1,4 @@
-name: Unzip into jalva (create PR)
+name: Unzip into a jalva (create PR)
 on:
   push:
     paths:
