@@ -11,60 +11,66 @@ env:
 jobs:
   unzip-to-pr:
     runs-on: ubuntu-latest
+    outputs:
+      created_branch: ${{ steps.create_branch.outputs.branch || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Prepare
+      - name: Prepare environment
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip git jq
           mkdir -p jalva
 
       - name: Find zip files
-        id: zips
+        id: find_zips
         run: |
-          files=$(ls -1 *.zip 2>/dev/null || true)
-          echo "::set-output name=list::${files}"
+          files=$(printf "%s\n" *.zip 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+          echo "zips=$files" >> $GITHUB_OUTPUT
+
       - name: Extract zips into jalva
-        if: steps.zips.outputs.list != ''
+        if: ${{ needs.unzip-to-pr.outputs == '' || always() }}
         run: |
-          for z in ${{ steps.zips.outputs.list }}; do
-            echo "Extracting $z"
-            unzip -o "$z" -d jalva || echo "unzip failed for $z"
+          if [ -z "${{ steps.find_zips.outputs.zips }}" ]; then
+            echo "No zip files found, skipping extraction"
+            exit 0
+          fi
+          for z in ${{ steps.find_zips.outputs.zips }}; do
+            if [ -f "$z" ]; then
+              echo "Extracting $z"
+              unzip -o "$z" -d jalva || echo "unzip failed for $z"
+            fi
           done
 
-      - name: Show jalva sample
+      - name: Show sample of jalva
         run: ls -la jalva | sed -n '1,200p'
 
-      - name: Create branch if changes
-        id: commit
+      - name: Commit changes on new branch (if any)
+        id: create_branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A jalva
           if git diff --cached --quiet; then
-            echo "no_changes=true" > out.txt
+            echo "no_changes=true" > /tmp/unzip_status || true
+            echo "branch=" >> $GITHUB_OUTPUT
             echo "No changes to commit"
             exit 0
           fi
           BRANCH="unzip/jalva-$(date +%s)"
-          git commit -m "Unzip zip files into jalva"
+          git commit -m "Unzip: add extracted files into jalva"
           git checkout -b "$BRANCH"
           git push --set-upstream origin "$BRANCH"
-          echo "branch=$BRANCH" > out.txt
-      - name: Set outputs
-        if: always()
-        run: |
-          if [ -f out.txt ]; then cat out.txt; fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
       - name: Create Pull Request
-        if: steps.commit.outcome == 'success' && (steps.commit.outputs == '' || always())
+        if: steps.create_branch.outputs.branch != ''
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Unzip: add extracted files in jalva"
-          branch: ${{ fromJson(needs.unzip-to-pr.outputs || '{}').branch || '' }}
+          branch: ${{ steps.create_branch.outputs.branch }}
           title: "Unzip: extracted files into jalva"
-          body: "Automated PR with files extracted from zip(s) into jalva"
+          body: "Automated PR with files extracted from repository zip(s) into jalva"
