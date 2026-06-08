@@ -51,6 +51,33 @@ jobs:
             echo "3.zip not present"
           fi
 
+      - name: Unzip 4.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "4.zip" ]; then
+            unzip -o 3.zip -d jalva
+          else
+            echo "4.zip not present"
+          fi
+          
+      - name: Unzip 5.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "5.zip" ]; then
+            unzip -o 5.zip -d jalva
+          else
+            echo "5.zip not present"
+          fi
+
+      - name: Unzip 6.zip into jalva (if exists)
+        if: ${{ always() }}
+        run: |
+          if [ -f "6.zip" ]; then
+            unzip -o 6.zip -d jalva
+          else
+            echo "6.zip not present"
+          fi
+          
       - name: Show jalva contents
         run: ls -la jalva | sed -n '1,200p'
 
